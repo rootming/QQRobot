@@ -76,19 +76,16 @@ function updateFriendsInfo
         FRIENDS_LIST_RAW[$i]=`echo ${temp} | jq ".[$i]"`
     done
     
-    for((i = 0; i < ${FRIENDS_COUNT}; i++))
-    do
-        FRIENDS_NICK_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".nick"`
-        FRIENDS_MARK_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".markname"`
-    done
     
     for((i = 0; i < ${FRIENDS_COUNT}; i++))
     do
-        FRIENDS_NICK_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".nick"`
-        FRIENDS_MARK_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".markname"`
-        FRIENDS_GROUP_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".category"`
+        FRIENDS_NICK_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".nick" | tr -d "\""`
+        FRIENDS_MARK_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".markname" | tr -d "\""`
+        FRIENDS_ID_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".id" | tr -d "\""`
+        FRIENDS_GROUP_LIST[$i]=`echo ${FRIENDS_LIST_RAW[$i]} | jq ".category" | tr -d "\""`
     done
     
+    #去除重复组
     GROUPS_LIST=($(awk -vRS=' ' '!a[$1]++' <<< ${FRIENDS_GROUP_LIST[@]}))
     GROUPS_COUNT=${#GROUPS_LIST[@]}
     #echo
@@ -107,7 +104,10 @@ function listGroupFriends
             do
                 if [ "$1" == "${FRIENDS_GROUP_LIST[$j]}" ]
                 then
-                    printf "\tNickname:${FRIENDS_NICK_LIST[$j]}\n"
+                    printf "\tMark:${FRIENDS_MARK_LIST[$j]}\n"
+                    printf "\tNick:${FRIENDS_NICK_LIST[$j]}\n"
+                    printf "\tID:${FRIENDS_ID_LIST[$j]}\n"
+                    printf "\n"
                 fi
             done
         fi      
@@ -122,10 +122,138 @@ function listAllGroupItem
     done
 } 
 
+function searchID
+{
+    for((i = 0; i < ${FRIENDS_COUNT}; i++))
+    do
+         if [ "$1" == "${FRIENDS_ID_LIST[$i]}" ]
+         then
+             return 0
+         else
+             return 233
+         fi
+    done
+}
+
+function searchNick
+{
+    for((i = 0; i < ${FRIENDS_COUNT}; i++))
+    do
+         if [ "$1" == "${FRIENDS_NICK_LIST[$i]}" ]
+         then
+             return 0
+         else
+             return 233
+         fi
+    done
+}
+
+function searchMark
+{
+    for((i = 0; i < ${FRIENDS_COUNT}; i++))
+    do
+         if [ "$1" == "${FRIENDS_MARK_LIST[$i]}" ]
+         then
+             return 0
+         else
+             return 233
+         fi
+    done
+}
+
+function searchGroup
+{
+    for((i = 0; i < ${GROUPS_COUNT}; i++))
+    do
+         if [ "$1" == "${GROUPS_LIST[$i]}" ]
+         then
+             return 0
+         else
+             return 233
+         fi
+    done
+}
+
+function sendMsgToFriendByID
+{
+    searchID "$1"
+    if [ $? -eq 0 ]
+    then
+        for((i = 0; i < ${FRIENDS_COUNT}; i++))
+        do
+                if [ "$1" == "${FRIENDS_ID_LIST[$i]}" ]
+                then
+                    execComand "send_message?id="${FRIENDS_ID_LIST[$i]}"&content="$2"" 1>/dev/null 
+                fi
+        done
+     else
+        echo "ID:$1 not find"
+     fi
+}
+
+function sendMsgToFriendByNick
+{
+    searchNick "$1"
+    if [ $? -eq 0 ]
+    then
+        for((i = 0; i < ${FRIENDS_COUNT}; i++))
+        do
+                if [ "$1" == "${FRIENDS_NICK_LIST[$i]}" ]
+                then
+                    execComand "send_message?id="${FRIENDS_ID_LIST[$i]}"&content="$2"" 1>/dev/null 
+                fi
+        done
+     else
+        echo "Nick:$1 not find"
+     fi
+}
+
+function sendMsgToFriendByMark
+{
+    searchMark "$1"
+    if [ $? -eq 0 ]
+    then
+        for((i = 0; i < ${FRIENDS_COUNT}; i++))
+        do
+                if [ "$1" == "${FRIENDS_MARK_LIST[$i]}" ]
+                then
+                    echo do
+                    execComand "send_message?id="${FRIENDS_ID_LIST[$i]}"&content="$2"" 1>/dev/null 
+                fi
+        done
+     else
+        echo "Mark:$1 not find"
+     fi
+}
+
+function sendMsgToGroup
+{
+    searchGroup "$1"
+    echo "$?"
+    if [ $? -eq 0 ]
+    then
+        for((i = 0; i < ${FRIENDS_COUNT}; i++))
+        do
+                if [[ "$1" == "${FRIENDS_GROUP_LIST[$i]}" && "$3" != "${FRIENDS_NICK_LIST[$i]}" ]]
+                then
+                    echo "Send to ${FRIENDS_NICK_LIST[$i]}..."
+                    execComand "send_message?id="${FRIENDS_ID_LIST[$i]}"&content="$2"" 1>/dev/null
+                    echo "Send done."
+                fi
+        done
+     else
+        echo "Group:$1 not find"
+     fi
+}
+
 
 updateUserInfo
 updateFriendsInfo
 listAllGroupItem
+#sendMsgToFriendByID 2440330 "Test"
+#sendMsgToFriendByNick rootming "Test"
+#sendMsgToFriendByMark "我" "Test"
+sendMsgToGroup "temp" "Test" "【彼岸花】  ℡ "
 #echo ${GROUPS_COUNT}
 #echo ${FRIENDS_COUNT}
 #echo ${USER_NICKNAME}
